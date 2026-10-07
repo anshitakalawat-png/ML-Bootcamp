@@ -1,0 +1,16 @@
+# Python 3.10+. Tested with Python 3.14.4 and the versions in the comments.
+
+# Stage 0 (validation) and stage 1 (speech-to-text)
+faster-whisper>=1.1       # tested 1.2.1 (installs ctranslate2, tested 4.8.2)
+av>=12                    # tested 19.0.1; bundles FFmpeg, so no separate install is needed
+numpy>=1.26               # tested 2.5.3
+
+# Stages 2 and 3 (LLMs)
+anthropic>=1.11           # tested 1.11.0; 1.11+ is needed for the refusal fallback option
+
+# App and configuration
+streamlit>=1.37           # tested 1.65.0
+python-dotenv>=1.0        # tested 1.2.4
+
+# Tests
+pytest>=8                 # tested 9.1.1
