@@ -49,7 +49,7 @@ MINUTES_RESULT = {
         "open_questions": ["Who owns the demo?"],
     },
     "warnings": ['Action item "Review costs": owner "Arjun" does not appear in the transcript, so it was changed to "unspecified".'],
-    "model": "claude-opus-5-5",
+    "model": "gemini-3.8-flash",
 }
 
 

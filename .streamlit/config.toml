@@ -1,0 +1,12 @@
+# Frontend theme for app.py. Fixed to a light pastel theme so widgets stay
+# readable on the pastel background even when the browser prefers dark mode.
+[theme]
+base = "light"
+primaryColor = "#2f7d6d"
+backgroundColor = "#fbf8f1"
+secondaryBackgroundColor = "#eef4ec"
+textColor = "#1f2d2a"
+font = "sans serif"
+
+[browser]
+gatherUsageStats = false

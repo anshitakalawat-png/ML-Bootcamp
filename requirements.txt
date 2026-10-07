@@ -6,7 +6,7 @@ av>=12                    # tested 19.0.1; bundles FFmpeg, so no separate instal
 numpy>=1.26               # tested 2.5.3
 
 # Stages 2 and 3 (LLMs)
-anthropic>=1.11           # tested 1.11.0; 1.11+ is needed for the refusal fallback option
+google-genai>=2.28        # tested 2.28.0 (official Google GenAI SDK)
 
 # App and configuration
 streamlit>=1.37           # tested 1.65.0

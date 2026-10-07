@@ -157,13 +157,13 @@ def test_unexpected_error_still_names_its_stage(tmp_path, stages, monkeypatch):
 
 def test_refinement_failure_stops_before_minutes(tmp_path, stages, monkeypatch):
     def fail(raw, vocabulary=None):
-        raise refine.RefinementError("No Anthropic API key found. Set ANTHROPIC_API_KEY in .env.")
+        raise refine.RefinementError("No Gemini API key found. Set GEMINI_API_KEY in .env.")
 
     monkeypatch.setattr(refine, "refine", fail)
     statuses = []
     with pytest.raises(PipelineError) as exc:
         pipeline.run_pipeline(write_tone(tmp_path / "a.wav"), on_status=statuses.append)
-    assert exc.value.message == "Stage 2 (refinement) failed: No Anthropic API key found. Set ANTHROPIC_API_KEY in .env."
+    assert exc.value.message == "Stage 2 (refinement) failed: No Gemini API key found. Set GEMINI_API_KEY in .env."
     assert names(stages) == ["stt"]
     assert statuses[-1] == "Refining transcript..."
 

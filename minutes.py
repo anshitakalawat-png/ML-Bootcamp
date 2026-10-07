@@ -11,9 +11,9 @@ After the model replies, the record is checked in code:
 - evidence that is not found in the transcript gets a warning.
 
 Configuration (.env or environment):
-  ANTHROPIC_API_KEY   required
-  MINUTES_MODEL       default "claude-opus-5-5"
-  MINUTES_EFFORT      default "high" (low | medium | high | xhigh | max)
+  GEMINI_API_KEY      required
+  MINUTES_MODEL       default "gemini-3.1-flash-lite"
+  MINUTES_EFFORT      default "high" (minimal | low | medium | high)
 
 CLI:  python minutes.py <refined.json from refine.py | transcript .txt> [--json OUT]
 """
@@ -104,7 +104,7 @@ def generate_minutes(refined: str | dict, model: str | None = None) -> dict:
     if not transcript.strip():
         raise MinutesError("The transcript is empty, so there is nothing to document.")
 
-    model = model or _env("MINUTES_MODEL", "claude-opus-5-5")
+    model = model or _env("MINUTES_MODEL", "gemini-3.1-flash-lite")
     try:
         record = llm.complete_json(
             model=model,

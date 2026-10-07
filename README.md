@@ -17,8 +17,8 @@ How it works, which models are used and why: see [TECHNICAL.md](TECHNICAL.md).
 
 - Python 3.10 or newer
 - About 1 GB of free disk space for the speech-recognition model, which is downloaded on first use
-- Internet access: for the first model download, and for every run, to call the Anthropic API
-- An Anthropic API key, from <https://console.anthropic.com/>
+- Internet access: for the first model download, and for every run, to call the Gemini API
+- A Gemini API key, from <https://aistudio.google.com/apikey>
 - A GPU is optional. On the CPU-only development laptop, 14–25 second clips took 6–9 seconds to transcribe, including loading the model; full-length meetings have not been timed yet. An NVIDIA GPU with CUDA is used automatically if present.
 
 ### FFmpeg
@@ -65,7 +65,7 @@ ffmpeg -i meeting.mp4 -vn -ac 1 -ar 16000 meeting.wav
    ```
    Then edit `.env`:
    ```ini
-   ANTHROPIC_API_KEY=sk-ant-...
+   GEMINI_API_KEY=your-gemini-key
    ```
    `.env` is listed in `.gitignore`. Never commit it or put keys in code.
 
@@ -130,24 +130,26 @@ All settings go in `.env`. Leave a value empty to use the default.
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | (required) | API key for the two LLM stages |
+| `GEMINI_API_KEY` | (required) | Gemini API key for the two LLM stages |
 | `WHISPER_MODEL_SIZE` | `small` | `tiny`, `base`, `small`, `medium`, `large-v3`: larger is more accurate and slower |
 | `WHISPER_DEVICE` | `auto` | `auto` uses a CUDA GPU if present, else the CPU |
 | `WHISPER_COMPUTE_TYPE` | `int8` on CPU, `float16` on GPU | Precision for Whisper |
 | `WHISPER_BEAM_SIZE` | `5` | Lower is faster, higher can be more accurate |
-| `REFINE_MODEL` | `claude-sonnet-5-5` | Model for stage 2 (refinement) |
-| `REFINE_EFFORT` | `medium` | `low` / `medium` / `high` / `xhigh` / `max` |
+| `REFINE_MODEL` | `gemini-3.5-flash-lite` | Gemini model for stage 2 (refinement) |
+| `REFINE_EFFORT` | `medium` | Thinking level: `minimal` / `low` / `medium` / `high` |
 | `REFINE_CHUNK_CHARS` | `6000` | Longer transcripts are refined in chunks of this size |
-| `MINUTES_MODEL` | `claude-opus-5-5` | Model for stage 3 (documentation) |
-| `MINUTES_EFFORT` | `high` | `low` / `medium` / `high` / `xhigh` / `max` |
+| `MINUTES_MODEL` | `gemini-3.1-flash-lite` | Gemini model for stage 3 (documentation); keep it different from `REFINE_MODEL` |
+| `MINUTES_EFFORT` | `high` | Thinking level: `minimal` / `low` / `medium` / `high` |
 
 ## Troubleshooting
 
 | Message or symptom | What to do |
 |---|---|
-| `Stage 2 (refinement) failed: No Anthropic API key found.` | Create `.env` and set `ANTHROPIC_API_KEY` (see Setup, step 4). |
+| `Stage 2 (refinement) failed: No Gemini API key found.` | Create `.env` and set `GEMINI_API_KEY` (see Setup, step 4). |
+| `... is temporarily unavailable (503: ... high demand ...)` | Google's servers are busy. The request was already retried automatically; try again in a few minutes, or set another model in `.env`. |
+| `... quota or rate limit was reached ...` | The key's quota for that model is used up, or the model is not in your plan (Pro models usually need billing). Wait, or choose another model. |
 | `Stage 1 (transcription) failed: No speech was detected in this recording.` | The file has sound but no recognisable speech. Check it is the right recording. |
-| `Model '...' was not found.` | Check the model name in `REFINE_MODEL` / `MINUTES_MODEL`. |
+| `Model '...' is not available` | Check `REFINE_MODEL` / `MINUTES_MODEL` in `.env`. Old names such as `claude-...` or `gemini-2.5-flash` no longer work. |
 | A yellow warning that part of the refined text was rejected | Refinement changed the length, numbers or negations of that part, so the raw text is shown there instead. The rest of the results are still valid. |
 | Hugging Face warnings about symlinks or `HF_TOKEN` on first run | Harmless. They come from the model download. |
 | Transcription is slow | Use `WHISPER_MODEL_SIZE=base`, or `WHISPER_BEAM_SIZE=1`, or a GPU. |

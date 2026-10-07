@@ -1,0 +1,141 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&display=swap">
+<style>
+  :root { --teal: #2f7d6d; --teal-strong: #23665a; --sage: #c9d8cf; --ink: #1f2d2a; --muted: #5e6f6a; --line: rgba(31,45,42,0.10); }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: transparent; font-family: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink); }
+  .top { display: flex; align-items: center; gap: 0.7rem; margin-bottom: 0.45rem; min-width: 0; }
+  .play {
+    width: 38px; height: 38px; border-radius: 50%; border: none; background: var(--teal); color: #fff; cursor: pointer; flex: none;
+    display: grid; place-items: center; box-shadow: 0 6px 16px -8px rgba(35,102,90,0.8);
+  }
+  .play:hover { background: var(--teal-strong); }
+  .play:focus-visible, canvas:focus-visible { outline: 2px solid var(--teal); outline-offset: 3px; }
+  .play svg { width: 16px; height: 16px; fill: #fff; }
+  .info { min-width: 0; flex: 1; }
+  .name { font-weight: 700; font-size: 0.92rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sub { color: var(--muted); font-size: 0.8rem; font-variant-numeric: tabular-nums; white-space: nowrap; flex: none; }
+  .wave { position: relative; }
+  canvas { width: 100%; height: 60px; display: block; cursor: pointer; border-radius: 12px; }
+  .note { color: #9b3f35; font-size: 0.82rem; margin-top: 0.4rem; display: none; }
+</style>
+</head>
+<body>
+  <div class="top">
+    <button class="play" id="play" type="button" aria-label="Play">
+      <svg id="icon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+    </button>
+    <div class="info">
+      <div class="name" title="__FILENAME__">__FILENAME__</div>
+    </div>
+    <div class="sub"><span id="cur">00:00</span> / <span id="dur">__DURATION_LABEL__</span></div>
+  </div>
+  <div class="wave">
+    <canvas id="wave" tabindex="0" aria-label="Audio waveform. Click to seek."></canvas>
+  </div>
+  <div class="note" id="note">This browser cannot play this audio format. The waveform and transcript are still accurate.</div>
+  <audio id="audio" preload="auto" src="__AUDIO_SRC__"></audio>
+<script>
+(function () {
+  var peaks = __PEAKS__;
+  var fallbackDuration = __DURATION__;
+  var channel = new BroadcastChannel("__CHANNEL__");
+  var audio = document.getElementById("audio");
+  var canvas = document.getElementById("wave");
+  var playBtn = document.getElementById("play");
+  var icon = document.getElementById("icon");
+  var cur = document.getElementById("cur");
+  var hoverX = null;
+
+  function duration() { return isFinite(audio.duration) && audio.duration > 0 ? audio.duration : fallbackDuration; }
+  function fmt(t) {
+    t = Math.max(0, Math.floor(t));
+    var h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), s = t % 60;
+    var mm = (m < 10 ? "0" : "") + m, ss = (s < 10 ? "0" : "") + s;
+    return h > 0 ? h + ":" + mm + ":" + ss : mm + ":" + ss;
+  }
+
+  function draw() {
+    var dpr = window.devicePixelRatio || 1;
+    var w = canvas.clientWidth, h = canvas.clientHeight;
+    if (canvas.width !== Math.round(w * dpr)) { canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr); }
+    var ctx = canvas.getContext("2d");
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    var n = peaks.length, gap = 2, barW = Math.max(1.5, w / n - gap);
+    var progress = audio.currentTime / duration();
+    for (var i = 0; i < n; i++) {
+      var x = i * (w / n);
+      var barH = Math.max(3, peaks[i] * (h - 8));
+      var played = (i + 0.5) / n <= progress;
+      ctx.fillStyle = played ? "#2f7d6d" : "#c9d8cf";
+      var y = (h - barH) / 2, r = Math.min(barW / 2, 3);
+      ctx.beginPath();
+      if (ctx.roundRect) { ctx.roundRect(x, y, barW, barH, r); } else { ctx.rect(x, y, barW, barH); }
+      ctx.fill();
+    }
+    var px = Math.min(w - 1, Math.max(1, progress * w));
+    ctx.fillStyle = "#23665a";
+    ctx.fillRect(px - 1, 2, 2, h - 4);
+    if (hoverX !== null) {
+      ctx.fillStyle = "rgba(35,102,90,0.25)";
+      ctx.fillRect(hoverX - 0.5, 2, 1, h - 4);
+    }
+    cur.textContent = fmt(audio.currentTime);
+  }
+
+  function setIcon() {
+    icon.innerHTML = audio.paused ? '<path d="M8 5v14l11-7z"/>' : '<path d="M6 5h4v14H6zM14 5h4v14h-4z"/>';
+    playBtn.setAttribute("aria-label", audio.paused ? "Play" : "Pause");
+  }
+
+  function broadcast() { channel.postMessage({ type: "time", t: audio.currentTime, playing: !audio.paused }); }
+
+  function seek(t, play) {
+    audio.currentTime = Math.max(0, Math.min(t, duration()));
+    draw();
+    broadcast();
+    if (play) { audio.play().catch(function () {}); }
+  }
+
+  var raf = null;
+  function loop() { draw(); broadcast(); raf = audio.paused ? null : requestAnimationFrame(loop); }
+
+  playBtn.addEventListener("click", function () {
+    if (audio.paused) { audio.play().catch(function () {}); } else { audio.pause(); }
+  });
+  audio.addEventListener("play", function () { setIcon(); if (!raf) { loop(); } });
+  audio.addEventListener("pause", function () { setIcon(); draw(); broadcast(); });
+  audio.addEventListener("ended", function () { setIcon(); draw(); broadcast(); });
+  audio.addEventListener("seeked", function () { draw(); broadcast(); });
+  audio.addEventListener("loadedmetadata", function () { document.getElementById("dur").textContent = fmt(duration()); draw(); });
+  audio.addEventListener("error", function () { document.getElementById("note").style.display = "block"; playBtn.disabled = true; });
+
+  canvas.addEventListener("click", function (e) {
+    var rect = canvas.getBoundingClientRect();
+    seek(((e.clientX - rect.left) / rect.width) * duration(), false);
+  });
+  canvas.addEventListener("mousemove", function (e) { hoverX = e.clientX - canvas.getBoundingClientRect().left; draw(); });
+  canvas.addEventListener("mouseleave", function () { hoverX = null; draw(); });
+  canvas.addEventListener("keydown", function (e) {
+    if (e.key === "ArrowRight") { seek(audio.currentTime + 5, false); e.preventDefault(); }
+    if (e.key === "ArrowLeft") { seek(audio.currentTime - 5, false); e.preventDefault(); }
+    if (e.key === " ") { playBtn.click(); e.preventDefault(); }
+  });
+
+  channel.onmessage = function (e) {
+    var msg = e.data || {};
+    if (msg.type === "seek") { seek(msg.t, true); }
+    if (msg.type === "hello") { broadcast(); }
+  };
+
+  new ResizeObserver(draw).observe(canvas);
+  draw();
+  broadcast();
+})();
+</script>
+</body>
+</html>

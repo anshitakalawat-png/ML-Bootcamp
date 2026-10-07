@@ -1,0 +1,74 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&display=swap">
+<style>
+  :root { --teal: #2f7d6d; --teal-strong: #23665a; --mint: #dcefe6; --ink: #1f2d2a; --muted: #5e6f6a; --line: rgba(31,45,42,0.10); }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: transparent; font-family: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink); }
+  .list { height: 100vh; overflow-y: auto; padding-right: 4px; scroll-behavior: smooth; }
+  .list::-webkit-scrollbar { width: 6px; }
+  .list::-webkit-scrollbar-thumb { background: rgba(31,45,42,0.15); border-radius: 3px; }
+  .seg { display: flex; gap: 0.5rem; padding: 0.38rem 0.45rem; border-radius: 12px; border: 1px solid transparent; transition: background 0.15s ease; }
+  .seg:hover { background: rgba(255,255,255,0.6); }
+  .seg.active { background: #fff; border-color: rgba(47,125,109,0.35); box-shadow: 0 1px 6px rgba(31,45,42,0.06); }
+  .ts {
+    flex: none; font: 600 0.74rem/1.2 "Manrope", system-ui, sans-serif; font-variant-numeric: tabular-nums; color: var(--teal-strong);
+    background: var(--mint); border: 1px solid transparent; border-radius: 999px; padding: 0.18rem 0.45rem; cursor: pointer; height: fit-content;
+  }
+  .ts:hover { border-color: var(--teal); }
+  .ts:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+  .seg.active .ts { background: var(--teal); color: #fff; }
+  .tx { font-size: 0.86rem; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; min-width: 0; }
+  mark { background: rgba(240, 200, 80, 0.5); color: inherit; border-radius: 3px; padding: 0 1px; }
+</style>
+</head>
+<body>
+  <div class="list" id="list">__SEGMENTS__</div>
+<script>
+(function () {
+  var channel = new BroadcastChannel("__CHANNEL__");
+  var list = document.getElementById("list");
+  var rows = Array.prototype.slice.call(list.querySelectorAll(".seg"));
+  var active = null;
+
+  function activate(row, scroll) {
+    if (row === active) { return; }
+    if (active) { active.classList.remove("active"); active.removeAttribute("aria-current"); }
+    active = row;
+    if (!row) { return; }
+    row.classList.add("active");
+    row.setAttribute("aria-current", "true");
+    if (scroll) {
+      var top = row.offsetTop - list.offsetTop;
+      if (top < list.scrollTop || top + row.offsetHeight > list.scrollTop + list.clientHeight) {
+        list.scrollTop = top - list.clientHeight / 3;
+      }
+    }
+  }
+
+  function rowAt(t) {
+    var found = null;
+    for (var i = 0; i < rows.length; i++) {
+      if (parseFloat(rows[i].dataset.start) <= t + 0.001) { found = rows[i]; } else { break; }
+    }
+    return found;
+  }
+
+  rows.forEach(function (row) {
+    row.querySelector(".ts").addEventListener("click", function () {
+      activate(row, false);
+      channel.postMessage({ type: "seek", t: parseFloat(row.dataset.start) });
+    });
+  });
+
+  channel.onmessage = function (e) {
+    var msg = e.data || {};
+    if (msg.type === "time") { activate(rowAt(msg.t), msg.playing); }
+  };
+  channel.postMessage({ type: "hello" });
+})();
+</script>
+</body>
+</html>

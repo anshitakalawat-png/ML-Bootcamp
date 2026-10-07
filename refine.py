@@ -11,9 +11,9 @@ the raw text, the refinement of that chunk is rejected, the raw text is kept
 for it, and a warning is returned for the UI to show.
 
 Configuration (.env or environment):
-  ANTHROPIC_API_KEY   required
-  REFINE_MODEL        default "claude-sonnet-5-5"
-  REFINE_EFFORT       default "medium" (low | medium | high | xhigh | max)
+  GEMINI_API_KEY      required
+  REFINE_MODEL        default "gemini-3.5-flash-lite"
+  REFINE_EFFORT       default "medium" (minimal | low | medium | high)
   REFINE_CHUNK_CHARS  default 6000
 
 CLI:  python refine.py <transcript.json from stt.py> [--vocab "Term A, Term B"] [--json OUT]
@@ -97,7 +97,7 @@ def refine(raw: dict, vocabulary: list[str] | None = None, model: str | None = N
     if not text.strip():
         raise RefinementError("The raw transcript is empty, so there is nothing to refine.")
 
-    model = model or _env("REFINE_MODEL", "claude-sonnet-5-5")
+    model = model or _env("REFINE_MODEL", "gemini-3.5-flash-lite")
     effort = _env("REFINE_EFFORT", "medium")
     max_chars = int(_env("REFINE_CHUNK_CHARS", "6000"))
     vocab = _clean_vocabulary(vocabulary)

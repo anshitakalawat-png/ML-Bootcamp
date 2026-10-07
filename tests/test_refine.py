@@ -187,10 +187,10 @@ def test_empty_raw_transcript():
 
 def test_model_configurable(fake_llm, monkeypatch):
     calls = fake_llm(echo)
-    monkeypatch.setenv("REFINE_MODEL", "claude-sonnet-5-5")
-    assert refine.refine(RAW)["model"] == "claude-sonnet-5-5"
-    assert refine.refine(RAW, model="claude-haiku-4-5")["model"] == "claude-haiku-4-5"
-    assert [c["model"] for c in calls] == ["claude-sonnet-5-5", "claude-haiku-4-5"]
+    monkeypatch.setenv("REFINE_MODEL", "gemini-3.7-flash")
+    assert refine.refine(RAW)["model"] == "gemini-3.7-flash"
+    assert refine.refine(RAW, model="gemini-3.5-flash-lite")["model"] == "gemini-3.5-flash-lite"
+    assert [c["model"] for c in calls] == ["gemini-3.7-flash", "gemini-3.5-flash-lite"]
 
 
 def test_prompt_covers_the_rules():

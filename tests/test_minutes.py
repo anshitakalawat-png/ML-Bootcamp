@@ -165,7 +165,7 @@ def test_default_model_differs_from_refinement(fake_llm, monkeypatch):
         monkeypatch.delenv(var, raising=False)
     calls = fake_llm(record())
     minutes.generate_minutes(REFINED)
-    assert calls[0]["model"] == "claude-opus-5-5"
+    assert calls[0]["model"] == "gemini-3.1-flash-lite"
     assert calls[0]["effort"] == "high"
 
     refine_calls = []

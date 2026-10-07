@@ -8,8 +8,8 @@ This document describes the models the meeting assistant uses, what each one is 
 |---|---|---|---|
 | 0. Validation | none (signal checks in code) | locally | Reject files that cannot or should not be processed |
 | 1. Speech-to-text | **Whisper `small`** via **faster-whisper** (CTranslate2), with **Silero VAD** | locally (CPU `int8` by default, GPU `float16` if available) | Audio → raw transcript with segment timestamps |
-| 2. Refinement (LLM #1) | **Claude Sonnet 5.5** (`claude-sonnet-5-5`) | Anthropic API | Correct misheard technical terms, acronyms and names; nothing else |
-| 3. Documentation (LLM #2) | **Claude Opus 5.5** (`claude-opus-5-5`) | Anthropic API | Summary, minutes, key decisions, action items, open questions |
+| 2. Refinement (LLM #1) | **Gemini 3.5 Flash-Lite** (`gemini-3.5-flash-lite`) | Gemini API (`google-genai` SDK) | Correct misheard technical terms, acronyms and names; nothing else |
+| 3. Documentation (LLM #2) | **Gemini 3.1 Flash-Lite** (`gemini-3.1-flash-lite`) | Gemini API (`google-genai` SDK) | Summary, minutes, key decisions, action items, open questions |
 
 All model names are configurable in `.env` (`WHISPER_MODEL_SIZE`, `REFINE_MODEL`, `MINUTES_MODEL`). The values above are the defaults.
 
@@ -29,20 +29,52 @@ All model names are configurable in `.env` (`WHISPER_MODEL_SIZE`, `REFINE_MODEL`
 
   Full-length meetings have not been timed yet.
 
-### Claude Sonnet 5.5 (stage 2, refinement)
+### How the Gemini models were chosen
 
-Refinement is a narrow, mostly mechanical edit: keep the text as it is, except fix words like "cube control" → "kubectl" or "PREA" → "Priya" (when "Priya" is in the user's vocabulary). It needs good knowledge of technical vocabulary and close instruction-following, but little deep reasoning. That fits Sonnet, which is faster and costs half as much per token as Opus. It runs at effort `medium`.
+The defaults were checked against the Gemini API with the project's key on 7 October 2026, not taken from documentation. Each candidate got a real request in the exact shape the pipeline sends: a system instruction, a strict JSON schema with `additionalProperties: false`, and a thinking level.
 
-### Claude Opus 5.5 (stage 3, documentation)
+| Model | Result on 7 Oct 2026 |
+|---|---|
+| `gemini-3.5-flash-lite` | Worked: valid JSON in 2–3 s at `medium` and `high` |
+| `gemini-3.1-flash-lite` | Worked: valid JSON; a full meeting record in about 15 s |
+| `gemini-3.8-flash`, `gemini-3.7-flash`, `gemini-3.5-flash` | Listed, but returned 503 "high demand" or timed out on every attempt |
+| `gemini-3.1-pro-preview` | 429: no quota on a free-tier key (Pro needs billing) |
+| `gemini-2.5-pro`, `gemini-2.5-flash` | 404: "no longer available to new users" |
+
+The defaults are therefore the two models that worked. With a paid key, or once demand eases, `MINUTES_MODEL=gemini-3.8-flash` (Google's recommended Flash model) or `gemini-3.1-pro-preview` are stronger choices for stage 3. No code change is needed.
+
+### Gemini 3.5 Flash-Lite (stage 2, refinement)
+
+Refinement is a narrow, mostly mechanical edit: keep the text as it is, except fix words like "cube control" → "kubectl" or "PREA" → "Priya" (when "Priya" is in the user's vocabulary). It needs knowledge of technical vocabulary and close instruction-following, but little deep reasoning, and it runs once per 6,000-character chunk. A fast, low-cost Flash-Lite model fits that, at thinking level `medium`.
+
+In the live tests it corrected "PREA" → "Priya" and "my SQL" → "MySQL", and changed nothing else.
+
+### Gemini 3.1 Flash-Lite (stage 3, documentation)
 
 The documentation stage makes the judgements that matter most to readers:
 - whether something was **agreed** or only **proposed**;
 - whether a task was actually **committed to**;
 - whether an owner or deadline was **explicitly stated**.
 
-These are the errors the problem statement forbids, so this stage uses the more capable model, at effort `high`. Using a different model from stage 2 also means the two stages don't share the same blind spots.
+It runs at thinking level `high` and is a different model from stage 2, so the two stages don't share the same blind spots.
 
-Both LLM stages request **structured JSON output** (`output_config.format` with a JSON schema). They also enable the API's **refusal fallback** (`fallbacks: "default"`), which retries a request on another model if a safety classifier declines it. Both models have a 1M-token context window, so a multi-hour meeting fits in a single documentation call.
+In the live tests (text-to-speech recordings) it behaved as required:
+
+| Test recording | Result |
+|---|---|
+| Normal meeting | One agreed decision; two action items with the named owners (Priya, Rahul) and stated deadlines; the budget as an open question |
+| No owner or deadline named | No invented tasks; every item became an open question |
+| Proposals only ("maybe switch to Postgres", "let's think about it") | No decisions and no action items; the proposals became open questions |
+
+### How the Gemini calls are made
+
+Both LLM stages call `client.models.generate_content` through `llm.complete_json`.
+- **Client:** `genai.Client()`, which reads `GEMINI_API_KEY` from the environment.
+- **Strict JSON:** `response_mime_type="application/json"`, with the stage's JSON Schema in `response_json_schema`.
+- **Prompts:** the prompt file is sent as `system_instruction`.
+- **Effort:** `REFINE_EFFORT` / `MINUTES_EFFORT` become Gemini's `thinking_level` (`minimal`, `low`, `medium`, `high`). `xhigh` and `max` from older `.env` files are treated as `high`.
+- **Retries:** the client automatically retries 429, 500, 502 and 503 with exponential backoff, up to 4 attempts. Each request times out after 3 minutes. Timeouts are not retried, so a stuck request fails in minutes rather than repeating.
+- **Context:** both models accept about 1M input tokens, so a multi-hour meeting fits in a single documentation call.
 
 ## Data flow
 
@@ -105,7 +137,7 @@ Tests cover each of these.
 ```python
 {"refined_transcript": "Priya will update the kubectl config by Friday. ...",
  "corrections": [{"heard": "PREA", "corrected": "Priya"}, ...],
- "warnings": [...], "fallback_chunks": [...], "chunks": 1, "model": "claude-sonnet-5-5"}
+ "warnings": [...], "fallback_chunks": [...], "chunks": 1, "model": "gemini-3.5-flash-lite"}
 ```
 
 `refine.refine(raw, vocabulary)` reads `raw["text"]` and sends it to the model in chunks:
@@ -129,7 +161,7 @@ A correction is only reported if its `heard` text is in the raw chunk and its `c
             "action_items": [{"task": "...", "owner": "Priya" | "unspecified",
                               "deadline": "by Friday" | "unspecified", "evidence": "..."}],
             "open_questions": ["..."]},
- "warnings": [...], "model": "claude-opus-5-5"}
+ "warnings": [...], "model": "gemini-3.1-flash-lite"}
 ```
 
 `minutes.generate_minutes(refined)` sends the refined transcript with `prompts/minutes.txt`. The prompt states the rules:
@@ -162,7 +194,7 @@ Both LLM stages go through `llm.complete_json`:
 3. **Retry:** if parsing or checks fail, including a reply cut off at the token limit, it retries **once**. The retry includes the failed reply and the error.
 4. **Failure:** a second failure raises an error, and the pipeline reports it as that stage failing.
 
-A refusal, a missing or invalid API key, an unknown model, rate limiting and network failures each produce a specific message instead of a traceback.
+A safety block, a missing or invalid API key, an unavailable model, quota or rate limits, an overloaded model, timeouts and network failures each produce a specific message instead of a traceback.
 
 ## Prompts
 
@@ -175,7 +207,7 @@ Prompts are loaded from these files at run time. No prompt text lives in the Pyt
 
 ## Testing
 
-`python -m pytest` runs 115 tests. They use fake models, so they need no API key or model download. They cover:
+`python -m pytest` runs 132 tests. They use fake models, so they need no API key or model download. They cover:
 - every validation case;
 - that a bad file never loads Whisper;
 - that Whisper's exact text is kept;
