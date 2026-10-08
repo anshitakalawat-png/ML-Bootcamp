@@ -2,22 +2,24 @@
 <html>
 <head>
 <meta charset="utf-8">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap">
 <style>
-  :root { --teal: #2f7d6d; --teal-strong: #23665a; --sage: #c9d8cf; --ink: #1f2d2a; --muted: #5e6f6a; --line: rgba(31,45,42,0.10); }
+  :root { --teal: #2f7a6b; --teal-strong: #23665a; --forest: #15403a; --ink: #173a33; --muted: #66746f; --line: rgba(23,58,51,0.09); }
   * { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; background: transparent; font-family: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink); }
+  html, body { margin: 0; background: transparent; font-family: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink); }
+  body { padding: 14px 16px 0; }
   .top { display: flex; align-items: center; gap: 0.7rem; margin-bottom: 0.45rem; min-width: 0; }
   .play {
-    width: 38px; height: 38px; border-radius: 50%; border: none; background: var(--teal); color: #fff; cursor: pointer; flex: none;
-    display: grid; place-items: center; box-shadow: 0 6px 16px -8px rgba(35,102,90,0.8);
+    width: 40px; height: 40px; border-radius: 50%; border: none; background: var(--forest); color: #fff; cursor: pointer; flex: none;
+    display: grid; place-items: center; box-shadow: 0 10px 18px -10px rgba(21,64,58,0.8);
   }
   .play:hover { background: var(--teal-strong); }
+  .play:disabled { background: #c9d6d1; box-shadow: none; cursor: default; }
   .play:focus-visible, canvas:focus-visible { outline: 2px solid var(--teal); outline-offset: 3px; }
   .play svg { width: 16px; height: 16px; fill: #fff; }
   .info { min-width: 0; flex: 1; }
-  .name { font-weight: 700; font-size: 0.92rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .sub { color: var(--muted); font-size: 0.8rem; font-variant-numeric: tabular-nums; white-space: nowrap; flex: none; }
+  .name { font-weight: 700; font-size: 0.92rem; color: var(--ink); letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sub { color: var(--muted); font-size: 0.78rem; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; flex: none; }
   .wave { position: relative; }
   canvas { width: 100%; height: 60px; display: block; cursor: pointer; border-radius: 12px; }
   .note { color: #9b3f35; font-size: 0.82rem; margin-top: 0.4rem; display: none; }
@@ -71,14 +73,14 @@
       var x = i * (w / n);
       var barH = Math.max(3, peaks[i] * (h - 8));
       var played = (i + 0.5) / n <= progress;
-      ctx.fillStyle = played ? "#2f7d6d" : "#c9d8cf";
+      ctx.fillStyle = played ? "#2f7a6b" : "#cbd5d1";
       var y = (h - barH) / 2, r = Math.min(barW / 2, 3);
       ctx.beginPath();
       if (ctx.roundRect) { ctx.roundRect(x, y, barW, barH, r); } else { ctx.rect(x, y, barW, barH); }
       ctx.fill();
     }
     var px = Math.min(w - 1, Math.max(1, progress * w));
-    ctx.fillStyle = "#23665a";
+    ctx.fillStyle = "#15403a";
     ctx.fillRect(px - 1, 2, 2, h - 4);
     if (hoverX !== null) {
       ctx.fillStyle = "rgba(35,102,90,0.25)";

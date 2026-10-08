@@ -4,23 +4,23 @@
 <meta charset="utf-8">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&display=swap">
 <style>
-  :root { --teal: #2f7d6d; --teal-strong: #23665a; --mint: #dcefe6; --ink: #1f2d2a; --muted: #5e6f6a; --line: rgba(31,45,42,0.10); }
+  :root { --teal: #2f7a6b; --teal-strong: #23665a; --forest: #15403a; --mint: #e6eeea; --ink: #173a33; --text: #2b3b37; --muted: #66746f; --line: rgba(23,58,51,0.09); }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; background: transparent; font-family: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink); }
   .list { height: 100vh; overflow-y: auto; padding-right: 4px; scroll-behavior: smooth; }
   .list::-webkit-scrollbar { width: 6px; }
-  .list::-webkit-scrollbar-thumb { background: rgba(31,45,42,0.15); border-radius: 3px; }
-  .seg { display: flex; gap: 0.5rem; padding: 0.38rem 0.45rem; border-radius: 12px; border: 1px solid transparent; transition: background 0.15s ease; }
-  .seg:hover { background: rgba(255,255,255,0.6); }
-  .seg.active { background: #fff; border-color: rgba(47,125,109,0.35); box-shadow: 0 1px 6px rgba(31,45,42,0.06); }
+  .list::-webkit-scrollbar-thumb { background: rgba(23,58,51,0.15); border-radius: 3px; }
+  .seg { display: flex; gap: 0.55rem; padding: 0.45rem 0.5rem; border-radius: 14px; border: 1px solid transparent; transition: background 0.15s ease; }
+  .seg:hover { background: rgba(240,245,242,0.9); }
+  .seg.active { background: #fff; border-color: rgba(47,122,107,0.3); box-shadow: 0 6px 16px -10px rgba(23,58,51,0.35); }
   .ts {
-    flex: none; font: 600 0.74rem/1.2 "Manrope", system-ui, sans-serif; font-variant-numeric: tabular-nums; color: var(--teal-strong);
+    flex: none; font: 700 0.72rem/1.2 "Manrope", system-ui, sans-serif; font-variant-numeric: tabular-nums; color: var(--teal-strong);
     background: var(--mint); border: 1px solid transparent; border-radius: 999px; padding: 0.18rem 0.45rem; cursor: pointer; height: fit-content;
   }
   .ts:hover { border-color: var(--teal); }
   .ts:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
-  .seg.active .ts { background: var(--teal); color: #fff; }
-  .tx { font-size: 0.86rem; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; min-width: 0; }
+  .seg.active .ts { background: var(--forest); color: #fff; }
+  .tx { font-size: 0.86rem; line-height: 1.55; color: var(--text); white-space: pre-wrap; overflow-wrap: anywhere; min-width: 0; }
   mark { background: rgba(240, 200, 80, 0.5); color: inherit; border-radius: 3px; padding: 0 1px; }
 </style>
 </head>

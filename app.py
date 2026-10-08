@@ -7,8 +7,10 @@ from the pipeline is never edited here: it is HTML-escaped and shown as is,
 never rendered as Markdown (where characters like * or # would change how it
 looks).
 
-Layout: a compact header and upload card (with the audio player), then a
-three-column workspace: main content | raw transcript | decisions. The audio
+Layout: a status pill, then a hero (brand, a three-step journey, an upload
+card and a workspace card with the audio player), then a three-column
+workspace: main content | raw transcript | decisions. Once results exist the
+hero's intro collapses to one row (CSS only). The audio
 player and the transcript are two small HTML components that talk over a
 BroadcastChannel: clicking a timestamp seeks the audio, and playback
 highlights the current segment. Styling lives in ui/style.css; the
@@ -58,7 +60,11 @@ BROWSER_AUDIO_TYPES = {
     "aac": "audio/aac", "ogg": "audio/ogg", "flac": "audio/flac",
 }
 WAVEFORM_BARS = 160
-PLAYER_HEIGHT = 118
+PLAYER_HEIGHT = 136
+# Placeholder bar heights (px) for the empty workspace card; decoration only.
+GHOST_BARS = (10, 18, 26, 14, 22, 30, 16, 24, 12, 20, 28, 18) * 5
+JOURNEY = ("Upload", "Understand", "Move forward")
+STATUS_LABELS = {"ready": "Ready to listen", "processing": "Processing", "done": "Done", "error": "Needs attention"}
 # Side panels fill the window height via CSS; this is their minimum.
 SIDE_PANEL_MIN_HEIGHT = 420
 
@@ -195,7 +201,7 @@ def progress_html(states: list[str]) -> str:
         f'<li class="{state}"><span class="dot">{marks[state]}</span>{html.escape(label)}</li>'
         for label, state in zip(STAGE_LABELS, states)
     )
-    return f'<div class="mt-section-title">Processing</div><ul class="mt-steps">{items}</ul>'
+    return f'<div class="mt-eyebrow">Processing</div><ul class="mt-steps">{items}</ul>'
 
 
 def stat_cards_html(record: dict) -> str:
@@ -247,15 +253,40 @@ def start_processing() -> None:
 
 
 def render_header(slot, status: str) -> None:
-    labels = {"ready": "Ready", "processing": "Processing", "done": "Done", "error": "Needs attention"}
-    bars = "".join(f'<span style="height:{h}px"></span>' for h in (8, 16, 24, 14, 20, 10))
-    slot.html(
-        '<div class="mt-header">'
-        f'<div class="mt-brand"><div class="mt-logo" aria-hidden="true"><div>{bars}</div></div>'
-        '<div><div class="mt-title">Meeting Assistant</div>'
-        '<div class="mt-subtitle">AI-powered meeting intelligence</div></div></div>'
-        f'<div class="mt-status {status}"><i></i>{labels[status]}</div>'
+    slot.html(f'<div class="mt-topbar"><div class="mt-status {status}"><i></i>{STATUS_LABELS[status]}</div></div>')
+
+
+def intro_html() -> str:
+    """Brand, pitch and the Upload → Understand → Move forward journey.
+
+    Which journey step is current is set in CSS from what is on the page
+    (an uploaded file, a running pipeline, results), so this stays static.
+    """
+    steps = "".join(
+        f'<li><span class="num">{i}</span><span class="label">{html.escape(label)}</span></li>'
+        for i, label in enumerate(JOURNEY, 1)
+    )
+    return (
+        '<div class="mt-intro"><div class="mt-intro-main">'
+        '<div class="mt-eyebrow"><i class="mt-icon sparkles"></i>Meeting intelligence, without the busywork</div>'
+        '<div class="mt-brand"><div class="mt-logo" aria-hidden="true"><i class="mt-icon waves"></i></div>'
+        '<h1 class="mt-title">Meeting <span>Assistant</span></h1></div>'
+        '<p class="mt-tagline">Clear decisions from every recording.</p>'
+        '<p class="mt-lede">Upload a recording and turn the discussion into clear decisions, '
+        "thoughtful summaries, and next steps your team can act on.</p>"
+        f'<ol class="mt-journey" aria-label="How it works">{steps}</ol></div>'
+        '<div class="mt-intro-aside"><span class="mt-icon-badge"><i class="mt-icon headphones"></i></span>'
+        "<p>Built for focused teams who would rather listen once and remember everything.</p></div>"
         "</div>"
+    )
+
+
+def card_head_html(eyebrow: str, title: str, text: str = "", aside: str = "") -> str:
+    """Eyebrow, title and optional text for a hero card; `aside` is trusted HTML on the right."""
+    body = f'<p class="text">{html.escape(text)}</p>' if text else ""
+    return (
+        f'<div class="mt-card-head"><div><div class="mt-eyebrow">{html.escape(eyebrow)}</div>'
+        f'<h2 class="title">{html.escape(title)}</h2>{body}</div>{aside}</div>'
     )
 
 
@@ -290,8 +321,15 @@ def channel_name(file_id: str) -> str:
 
 def render_audio_player(preview: dict | None, channel: str | None) -> None:
     with st.container(key="audio_card"):
+        pill = "Waiting for audio" if preview is None else "Audio loaded"
+        show_html(card_head_html("Your workspace", "The signal, in one place.",
+                                 aside=f'<span class="mt-pill{" live" if preview else ""}">{pill}</span>'))
         if preview is None:
-            show_html('<div class="mt-audio-empty">Your recording appears here, with its waveform, once you upload it.</div>')
+            bars = "".join(f'<span style="height:{h}px"></span>' for h in GHOST_BARS)
+            show_html(
+                f'<div class="mt-audio-empty"><div class="mt-wave-ghost" aria-hidden="true">{bars}</div>'
+                "<p>Your recording appears here, with its waveform, once you upload it.</p></div>"
+            )
             return
         st.iframe(
             fill_template("player.html", {
@@ -307,14 +345,15 @@ def render_audio_player(preview: dict | None, channel: str | None) -> None:
 
 
 def render_upload_section(processing: bool):
-    """Compact hero: upload and Process on the left, the audio player on the right."""
+    """Hero: intro on top, then the upload card (left) and the audio player (right)."""
     with st.container(key="hero"):
-        left, right = st.columns([1, 1.15], gap="medium", vertical_alignment="center")
-        with left:
-            show_html(
-                '<h1 class="mt-hero-title">Turn conversations into clear decisions.</h1>'
-                "<p class=\"mt-hero-text\">Upload your meeting recording and we'll handle the rest.</p>"
-            )
+        show_html(intro_html())
+        left, right = st.columns([1, 1.15], gap="medium")
+        with left, st.container(key="upload_card"):
+            show_html(card_head_html(
+                "Start here", "Bring in a recording", "Drop your meeting audio here and we'll surface what matters.",
+                aside='<span class="mt-corner-icon" aria-hidden="true"><i class="mt-icon file-audio"></i></span>',
+            ))
             # No `type=` filter: unsupported formats must reach stage 0 so the
             # user gets its message.
             uploaded = st.file_uploader(
@@ -471,7 +510,7 @@ def render_refined(result: pipeline.PipelineResult, query: str) -> None:
 def render_export_section(files: dict) -> None:
     with st.container(key="exports"):
         columns = st.columns([0.9] + [1] * len(DOWNLOADS), vertical_alignment="center")
-        columns[0].html('<div class="mt-section-title">Export meeting</div>')
+        columns[0].html('<div class="mt-eyebrow">Export meeting</div>')
         for column, (kind, label, mime) in zip(columns[1:], DOWNLOADS):
             column.download_button(
                 label, data=files[kind], file_name=exporters.FILENAMES[kind], mime=mime,

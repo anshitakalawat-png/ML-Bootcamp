@@ -2,10 +2,10 @@
 # readable on the pastel background even when the browser prefers dark mode.
 [theme]
 base = "light"
-primaryColor = "#2f7d6d"
-backgroundColor = "#fbf8f1"
-secondaryBackgroundColor = "#eef4ec"
-textColor = "#1f2d2a"
+primaryColor = "#2f7a6b"
+backgroundColor = "#f6f6f2"
+secondaryBackgroundColor = "#eef3f0"
+textColor = "#2b3b37"
 font = "sans serif"
 
 [browser]

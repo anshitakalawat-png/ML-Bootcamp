@@ -79,6 +79,12 @@ def test_diff_of_identical_text_has_no_marks():
     assert "&lt;text&gt;" in fragment
 
 
+def test_card_head_escapes_text():
+    fragment = app.card_head_html("Start <here>", "A & B", "x < y")
+    assert "Start &lt;here&gt;" in fragment and "A &amp; B" in fragment and "x &lt; y" in fragment
+    assert '<p class="text">' not in app.card_head_html("Eyebrow", "Title")
+
+
 def test_html_table_escapes_cells():
     table = app.html_table([{"a": "<b>x</b>", "b": "unspecified"}], [("a", "A"), ("b", "B")])
     assert "&lt;b&gt;x&lt;/b&gt;" in table and "<td>unspecified</td>" in table
@@ -234,9 +240,10 @@ def test_empty_page_shows_hero_and_disabled_button():
     assert at.button[0].label == "Process meeting" and at.button[0].disabled
     assert len(at.tabs) == 0
     blocks = html_blocks(at)
-    assert "Turn conversations into clear decisions." in blocks
-    assert "Upload your meeting recording and we'll handle the rest." in blocks
-    assert '<div class="mt-title">Meeting Assistant</div>' in blocks and "Ready" in blocks
+    assert "Clear decisions from every recording." in blocks
+    assert "Upload a recording and turn the discussion into clear decisions" in blocks
+    assert '<h1 class="mt-title">Meeting <span>Assistant</span></h1>' in blocks and "Ready to listen" in blocks
+    assert "Bring in a recording" in blocks and "Waiting for audio" in blocks
     assert "Your recording appears here" in blocks
     assert iframes(at) == []
 
